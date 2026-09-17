@@ -47,7 +47,7 @@
         .editable-content a, .note-body a { color: #1a73e8; text-decoration: underline; }
         
         .notes-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px; }
-        .note-card { background: white; padding: 15px; border-radius: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.08); position: relative; border-left: 5px solid #1a73e8; display: flex; flex-direction: column; justify-content: space-between; }
+        .note-card { background: white; padding: 15px; border-radius: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.08); position: relative; border-left: 5px solid #1a73e8; display: flex; flex-direction: column; justify-content: space-between; cursor: pointer; user-select: none; }
         .note-card.pinned { border-left-color: #f39c12; background: #fffdf5; }
         .note-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
         .note-title { font-size: 18px; font-weight: bold; }
@@ -58,7 +58,7 @@
         .highlight { background-color: #ffeb3b; padding: 2px 4px; border-radius: 3px; }
         
         .note-footer { font-size: 11px; color: #888; border-top: 1px solid #eee; padding-top: 8px; display: flex; justify-content: space-between; align-items: center; }
-        .action-btn { background: none; border: none; cursor: pointer; font-size: 14px; }
+        .action-btn { background: none; border: none; cursor: pointer; font-size: 14px; padding: 2px 5px; }
     </style>
 </head>
 <body>
@@ -72,7 +72,6 @@
             <button class="tab-btn" id="tabPhone" onclick="switchAuthTab('phone')">📱 เบอร์โทร</button>
         </div>
 
-        <!-- Form Email -->
         <div id="emailForm">
             <input type="email" id="authEmail" placeholder="อีเมล">
             <input type="password" id="authPassword" placeholder="รหัสผ่าน">
@@ -82,7 +81,6 @@
             </p>
         </div>
 
-        <!-- Form Phone -->
         <div id="phoneForm" style="display: none;">
             <input type="tel" id="phoneNumber" placeholder="เบอร์โทรศัพท์ (เช่น +66812345678)">
             <button class="btn btn-phone" id="sendOtpBtn" onclick="sendOTP()">ส่งรหัส OTP</button>
@@ -96,7 +94,6 @@
 
         <div class="divider">หรือ</div>
 
-        <!-- Google Sign-In -->
         <button class="btn btn-google" onclick="handleGoogleAuth()">🌐 เข้าสู่ระบบด้วย Google</button>
     </div>
 
@@ -274,20 +271,23 @@
         const content = contentInput.innerHTML;
         const now = new Date().toLocaleString('th-TH');
 
-        if (currentEditId) {
-            await updateDoc(doc(db, "notes", currentEditId), {
-                title, content, updatedAt: now
-            });
-        } else {
-            await addDoc(collection(db, "notes"), {
-                userId: currentUser.uid,
-                title, content, isPinned: false,
-                createdAt: now, updatedAt: now
-            });
+        try {
+            if (currentEditId) {
+                await updateDoc(doc(db, "notes", currentEditId), {
+                    title, content, updatedAt: now
+                });
+            } else {
+                await addDoc(collection(db, "notes"), {
+                    userId: currentUser.uid,
+                    title, content, isPinned: false,
+                    createdAt: now, updatedAt: now
+                });
+            }
+        } catch(e) {
+            console.error("Save error: ", e);
+        } finally {
+            hideEditor();
         }
-
-        // ซ่อนกรอบและล้างข้อมูล
-        hideEditor();
     };
 
     window.togglePin = async (id, currentPin) => {
@@ -295,9 +295,7 @@
     };
 
     window.deleteNote = async (id) => {
-        if (confirm('คุณต้องการลบโน้ตนี้ใช่ไหม?')) {
-            await deleteDoc(doc(db, "notes", id));
-        }
+        await deleteDoc(doc(db, "notes", id));
     };
 
     window.showEditor = (id = null) => {
@@ -305,8 +303,10 @@
         document.getElementById('editorCard').classList.add('active');
         if (id) {
             const note = notes.find(n => n.id === id);
-            document.getElementById('noteTitle').value = note.title;
-            document.getElementById('noteContent').innerHTML = note.content;
+            if (note) {
+                document.getElementById('noteTitle').value = note.title;
+                document.getElementById('noteContent').innerHTML = note.content;
+            }
         } else {
             document.getElementById('noteTitle').value = '';
             document.getElementById('noteContent').innerHTML = '';
@@ -373,19 +373,23 @@
         filtered.forEach(note => {
             const card = document.createElement('div');
             card.className = `note-card ${note.isPinned ? 'pinned' : ''}`;
+            
+            // ดับเบิ้ลคลิกที่การ์ดเพื่อแก้ไข
+            card.ondblclick = () => showEditor(note.id);
+
             card.innerHTML = `
                 <div>
                     <div class="note-header">
                         <div class="note-title">${note.title}</div>
-                        <span class="pin-icon" onclick="togglePin('${note.id}', ${note.isPinned})" title="ปักหมุด">📌</span>
+                        <span class="pin-icon" onclick="event.stopPropagation(); togglePin('${note.id}', ${note.isPinned})" title="ปักหมุด">📌</span>
                     </div>
                     <div class="note-body">${note.content}</div>
                 </div>
                 <div class="note-footer">
                     <div>🕒 ${note.createdAt}<br>✏️ ${note.updatedAt}</div>
                     <div>
-                        <button class="action-btn" onclick="showEditor('${note.id}')">✏️</button>
-                        <button class="action-btn" onclick="deleteNote('${note.id}')">🗑️</button>
+                        <button class="action-btn" onclick="event.stopPropagation(); showEditor('${note.id}')">✏️</button>
+                        <button class="action-btn" onclick="event.stopPropagation(); deleteNote('${note.id}')">🗑️</button>
                     </div>
                 </div>
             `;

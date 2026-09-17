@@ -140,7 +140,7 @@
         signInWithPopup, GoogleAuthProvider, RecaptchaVerifier, signInWithPhoneNumber, 
         onAuthStateChanged, signOut 
     } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-    import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, where } 
+    import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, where, serverTimestamp } 
         from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
     const firebaseConfig = {
@@ -162,6 +162,7 @@
     let isSignUpMode = false;
     let currentEditId = null;
     let confirmationResult = null;
+    let unsubscribeNotes = null;
 
     window.switchAuthTab = (tab) => {
         if (tab === 'email') {
@@ -238,7 +239,10 @@
         }
     };
 
-    window.logout = () => signOut(auth);
+    window.logout = () => {
+        if (unsubscribeNotes) unsubscribeNotes();
+        signOut(auth);
+    };
 
     onAuthStateChanged(auth, (user) => {
         currentUser = user;
@@ -250,17 +254,25 @@
         } else {
             document.getElementById('authArea').style.display = 'block';
             document.getElementById('mainApp').style.display = 'none';
+            if (unsubscribeNotes) unsubscribeNotes();
         }
     });
 
     function loadNotesFromCloud() {
+        if (unsubscribeNotes) unsubscribeNotes();
+
+        // ค้นหาตาม UID ของผู้ใช้ปัจจุบัน
         const q = query(collection(db, "notes"), where("userId", "==", currentUser.uid));
-        onSnapshot(q, (snapshot) => {
+        
+        unsubscribeNotes = onSnapshot(q, (snapshot) => {
             notes = [];
             snapshot.forEach((doc) => {
                 notes.push({ id: doc.id, ...doc.data() });
             });
             renderNotes();
+        }, (error) => {
+            console.error("Firestore Listen Error: ", error);
+            alert("เกิดข้อผิดพลาดในการโหลดข้อมูล: " + error.message);
         });
     }
 
@@ -269,22 +281,30 @@
         const contentInput = document.getElementById('noteContent');
         const title = titleInput.value.trim() || 'ไม่มีหัวข้อ';
         const content = contentInput.innerHTML;
-        const now = new Date().toLocaleString('th-TH');
+        const nowStr = new Date().toLocaleString('th-TH');
 
         try {
             if (currentEditId) {
                 await updateDoc(doc(db, "notes", currentEditId), {
-                    title, content, updatedAt: now
+                    title, 
+                    content, 
+                    updatedAt: nowStr,
+                    timestamp: serverTimestamp()
                 });
             } else {
                 await addDoc(collection(db, "notes"), {
                     userId: currentUser.uid,
-                    title, content, isPinned: false,
-                    createdAt: now, updatedAt: now
+                    title, 
+                    content, 
+                    isPinned: false,
+                    createdAt: nowStr, 
+                    updatedAt: nowStr,
+                    timestamp: serverTimestamp()
                 });
             }
         } catch(e) {
             console.error("Save error: ", e);
+            alert("บันทึกไม่สำเร็จ: " + e.message);
         } finally {
             hideEditor();
         }
@@ -365,28 +385,28 @@
         grid.innerHTML = '';
 
         const filtered = notes.filter(n => 
-            n.title.toLowerCase().includes(search) || n.content.toLowerCase().includes(search)
+            (n.title && n.title.toLowerCase().includes(search)) || 
+            (n.content && n.content.toLowerCase().includes(search))
         );
 
-        filtered.sort((a, b) => b.isPinned - a.isPinned);
+        filtered.sort((a, b) => (b.isPinned ? 1 : 0) - (a.isPinned ? 1 : 0));
 
         filtered.forEach(note => {
             const card = document.createElement('div');
             card.className = `note-card ${note.isPinned ? 'pinned' : ''}`;
             
-            // ดับเบิ้ลคลิกที่การ์ดเพื่อแก้ไข
             card.ondblclick = () => showEditor(note.id);
 
             card.innerHTML = `
                 <div>
                     <div class="note-header">
-                        <div class="note-title">${note.title}</div>
+                        <div class="note-title">${note.title || 'ไม่มีหัวข้อ'}</div>
                         <span class="pin-icon" onclick="event.stopPropagation(); togglePin('${note.id}', ${note.isPinned})" title="ปักหมุด">📌</span>
                     </div>
-                    <div class="note-body">${note.content}</div>
+                    <div class="note-body">${note.content || ''}</div>
                 </div>
                 <div class="note-footer">
-                    <div>🕒 ${note.createdAt}<br>✏️ ${note.updatedAt}</div>
+                    <div>🕒 ${note.createdAt || ''}<br>✏️ ${note.updatedAt || ''}</div>
                     <div>
                         <button class="action-btn" onclick="event.stopPropagation(); showEditor('${note.id}')">✏️</button>
                         <button class="action-btn" onclick="event.stopPropagation(); deleteNote('${note.id}')">🗑️</button>

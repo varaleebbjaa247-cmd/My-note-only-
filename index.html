@@ -10,99 +10,201 @@
         .container { max-width: 800px; margin: auto; }
         h1 { text-align: center; color: #1a73e8; margin-bottom: 20px; }
         
-        /* Controls & Search */
+        /* Auth UI */
+        .auth-card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); max-width: 400px; margin: 50px auto; text-align: center; }
+        .auth-card input { width: 100%; padding: 10px; margin: 8px 0; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; }
+        .auth-card button { width: 100%; margin-top: 10px; }
+
+        /* Main UI */
+        #mainApp { display: none; }
+        .user-bar { display: flex; justify-content: space-between; align-items: center; background: white; padding: 10px 15px; border-radius: 8px; margin-bottom: 15px; }
+        
         .controls { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
         .search-box { flex: 1; min-width: 200px; padding: 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 16px; }
-        .btn { padding: 12px 20px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        .btn { padding: 10px 18px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.2s; }
         .btn-primary { background-color: #1a73e8; color: white; }
-        .btn-primary:hover { background-color: #1557b0; }
+        .btn-danger { background-color: #dc3545; color: white; }
         
-        /* Note Editor Modal / Area */
         .editor-card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); margin-bottom: 25px; display: none; }
         .editor-card.active { display: block; }
         .input-title { width: 100%; padding: 10px; font-size: 18px; border: 1px solid #ddd; border-radius: 6px; margin-bottom: 10px; font-weight: bold; }
         
-        /* Toolbar for rich editing */
         .toolbar { display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; background: #f8f9fa; padding: 8px; border-radius: 6px; }
         .tool-btn { padding: 6px 12px; background: white; border: 1px solid #ccc; border-radius: 4px; cursor: pointer; font-size: 14px; }
-        .tool-btn:hover { background: #e9ecef; }
         
         .editable-content { min-height: 150px; border: 1px solid #ddd; border-radius: 6px; padding: 12px; outline: none; background: #fff; line-height: 1.6; }
-        .editable-content img { max-width: 100%; height: auto; border-radius: 6px; margin: 5px 0; }
+        .editable-content img, .note-body img { max-width: 100%; height: auto; border-radius: 6px; }
+        .editable-content a, .note-body a { color: #1a73e8; text-decoration: underline; }
         
-        /* Note Grid & Cards */
         .notes-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px; }
         .note-card { background: white; padding: 15px; border-radius: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.08); position: relative; border-left: 5px solid #1a73e8; display: flex; flex-direction: column; justify-content: space-between; }
         .note-card.pinned { border-left-color: #f39c12; background: #fffdf5; }
         .note-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
-        .note-title { font-size: 18px; font-weight: bold; word-break: break-word; }
+        .note-title { font-size: 18px; font-weight: bold; }
         .pin-icon { cursor: pointer; font-size: 18px; color: #ccc; }
         .note-card.pinned .pin-icon { color: #f39c12; }
         
         .note-body { font-size: 14px; color: #555; word-break: break-word; margin-bottom: 12px; max-height: 200px; overflow-y: auto; }
-        .note-body img { max-width: 100%; height: auto; border-radius: 4px; }
-        
         .highlight { background-color: #ffeb3b; padding: 2px 4px; border-radius: 3px; }
         
         .note-footer { font-size: 11px; color: #888; border-top: 1px solid #eee; padding-top: 8px; display: flex; justify-content: space-between; align-items: center; }
-        .note-actions { display: flex; gap: 8px; }
-        .action-btn { background: none; border: none; cursor: pointer; font-size: 14px; opacity: 0.7; }
-        .action-btn:hover { opacity: 1; }
-        
-        /* Image Resizer Control in Editor */
-        .img-size-input { width: 80px; padding: 4px; font-size: 12px; }
+        .action-btn { background: none; border: none; cursor: pointer; font-size: 14px; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>📝 โน้ตส่วนตัว (ไร้โฆษณา)</h1>
-
-    <!-- Control Bar -->
-    <div class="controls">
-        <input type="text" id="searchInput" class="search-box" placeholder="🔍 ค้นหาโน้ต (หัวข้อ/เนื้อหา)..." oninput="renderNotes()">
-        <button class="btn btn-primary" onclick="showEditor()">➕ เพิ่มโน้ตใหม่</button>
+    <div id="authArea" class="auth-card">
+        <h2 id="authTitle">🔑 เข้าสู่ระบบ</h2>
+        <input type="email" id="authEmail" placeholder="อีเมล">
+        <input type="password" id="authPassword" placeholder="รหัสผ่าน">
+        <button class="btn btn-primary" onclick="handleAuth()">เข้าสู่ระบบ</button>
+        <p style="font-size: 13px; margin-top: 15px;">
+            <a href="#" onclick="toggleAuthMode()" id="toggleAuthText">ยังไม่มีบัญชี? สมัครสมาชิกที่นี่</a>
+        </p>
     </div>
 
-    <!-- Editor Area -->
-    <div id="editorCard" class="editor-card">
-        <input type="text" id="noteTitle" class="input-title" placeholder="หัวข้อโน้ต...">
-        
-        <!-- Toolbar -->
-        <div class="toolbar">
-            <button class="tool-btn" onclick="highlightText()">🖍️ ไฮไลท์</button>
-            <label class="tool-btn">
-                🖼️ เพิ่มรูปภาพ <input type="file" id="imageInput" accept="image/*" style="display:none;" onchange="insertImage(event)">
-            </label>
-            <span style="font-size: 12px; align-self: center; color: #666;">ขนาดรูปภาพในโน้ตปรับตามขนาดจริง หรือพิมพ์ปรับได้</span>
+    <div id="mainApp">
+        <div class="user-bar">
+            <span>👤 <strong id="userEmailDisplay"></strong></span>
+            <button class="btn btn-danger" onclick="logout()">ออกจากระบบ</button>
         </div>
 
-        <div id="noteContent" class="editable-content" contenteditable="true" placeholder="เขียนเนื้อหาโน้ตที่นี่..."></div>
+        <h1>📝 โน้ตส่วนตัว (Cloud Sync)</h1>
 
-        <div style="margin-top: 15px; display: flex; justify-content: flex-end; gap: 10px;">
-            <button class="btn" style="background:#6c757d; color:white;" onclick="hideEditor()">ยกเลิก</button>
-            <button class="btn btn-primary" onclick="saveNote()">💾 บันทึกโน้ต</button>
+        <div class="controls">
+            <input type="text" id="searchInput" class="search-box" placeholder="🔍 ค้นหาโน้ต..." oninput="renderNotes()">
+            <button class="btn btn-primary" onclick="showEditor()">➕ เพิ่มโน้ตใหม่</button>
         </div>
+
+        <div id="editorCard" class="editor-card">
+            <input type="text" id="noteTitle" class="input-title" placeholder="หัวข้อโน้ต...">
+            
+            <div class="toolbar">
+                <button class="tool-btn" onclick="highlightText()">🖍️ ไฮไลท์</button>
+                <button class="tool-btn" onclick="addLink()">🔗 ใส่ลิงก์</button>
+                <label class="tool-btn">
+                    🖼️ เพิ่มรูปภาพ <input type="file" id="imageInput" accept="image/*" style="display:none;" onchange="insertImage(event)">
+                </label>
+            </div>
+
+            <div id="noteContent" class="editable-content" contenteditable="true" placeholder="เขียนเนื้อหาโน้ตที่นี่..."></div>
+
+            <div style="margin-top: 15px; display: flex; justify-content: flex-end; gap: 10px;">
+                <button class="btn" style="background:#6c757d; color:white;" onclick="hideEditor()">ยกเลิก</button>
+                <button class="btn btn-primary" onclick="saveNote()">💾 บันทึกโน้ต</button>
+            </div>
+        </div>
+
+        <div id="notesGrid" class="notes-grid"></div>
     </div>
-
-    <!-- Notes Display Area -->
-    <div id="notesGrid" class="notes-grid"></div>
 </div>
 
-<script>
-    let notes = JSON.parse(localStorage.getItem('my_private_notes') || '[]');
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } 
+        from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+    import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, where } 
+        from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyDwbcRZKgn699OIIVl1XIPKuffekDjoC9o",
+        authDomain: "note-flile-account.firebaseapp.com",
+        projectId: "note-flile-account",
+        storageBucket: "note-flile-account.firebasestorage.app",
+        messagingSenderId: "405432297452",
+        appId: "1:405432297452:web:485951c01f63e8f9bdc2c9"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    let currentUser = null;
+    let notes = [];
+    let isSignUpMode = false;
     let currentEditId = null;
 
-    function saveToStorage() {
-        localStorage.setItem('my_private_notes', JSON.stringify(notes));
+    window.toggleAuthMode = () => {
+        isSignUpMode = !isSignUpMode;
+        document.getElementById('authTitle').innerText = isSignUpMode ? '📝 สมัครสมาชิก' : '🔑 เข้าสู่ระบบ';
+        document.getElementById('toggleAuthText').innerText = isSignUpMode ? 'มีบัญชีอยู่แล้ว? เข้าสู่ระบบ' : 'ยังไม่มีบัญชี? สมัครสมาชิกที่นี่';
+    };
+
+    window.handleAuth = async () => {
+        const email = document.getElementById('authEmail').value;
+        const pass = document.getElementById('authPassword').value;
+        try {
+            if (isSignUpMode) {
+                await createUserWithEmailAndPassword(auth, email, pass);
+                alert('สมัครสมาชิกสำเร็จ!');
+            } else {
+                await signInWithEmailAndPassword(auth, email, pass);
+            }
+        } catch (e) {
+            alert('เกิดข้อผิดพลาด: ' + e.message);
+        }
+    };
+
+    window.logout = () => signOut(auth);
+
+    onAuthStateChanged(auth, (user) => {
+        currentUser = user;
+        if (user) {
+            document.getElementById('authArea').style.display = 'none';
+            document.getElementById('mainApp').style.display = 'block';
+            document.getElementById('userEmailDisplay').innerText = user.email;
+            loadNotesFromCloud();
+        } else {
+            document.getElementById('authArea').style.display = 'block';
+            document.getElementById('mainApp').style.display = 'none';
+        }
+    });
+
+    function loadNotesFromCloud() {
+        const q = query(collection(db, "notes"), where("userId", "==", currentUser.uid));
+        onSnapshot(q, (snapshot) => {
+            notes = [];
+            snapshot.forEach((doc) => {
+                notes.push({ id: doc.id, ...doc.data() });
+            });
+            renderNotes();
+        });
     }
 
-    function showEditor(id = null) {
-        currentEditId = id;
-        const editor = document.getElementById('editorCard');
-        editor.classList.add('active');
+    window.saveNote = async () => {
+        const title = document.getElementById('noteTitle').value.trim() || 'ไม่มีหัวข้อ';
+        const content = document.getElementById('noteContent').innerHTML;
+        const now = new Date().toLocaleString('th-TH');
 
-        if (id !== null) {
+        if (currentEditId) {
+            await updateDoc(doc(db, "notes", currentEditId), {
+                title, content, updatedAt: now
+            });
+        } else {
+            await addDoc(collection(db, "notes"), {
+                userId: currentUser.uid,
+                title, content, isPinned: false,
+                createdAt: now, updatedAt: now
+            });
+        }
+        hideEditor();
+    };
+
+    window.togglePin = async (id, currentPin) => {
+        await updateDoc(doc(db, "notes", id), { isPinned: !currentPin });
+    };
+
+    window.deleteNote = async (id) => {
+        if (confirm('คุณต้องการลบโน้ตนี้ใช่ไหม?')) {
+            await deleteDoc(doc(db, "notes", id));
+        }
+    };
+
+    window.showEditor = (id = null) => {
+        currentEditId = id;
+        document.getElementById('editorCard').classList.add('active');
+        if (id) {
             const note = notes.find(n => n.id === id);
             document.getElementById('noteTitle').value = note.title;
             document.getElementById('noteContent').innerHTML = note.content;
@@ -110,102 +212,59 @@
             document.getElementById('noteTitle').value = '';
             document.getElementById('noteContent').innerHTML = '';
         }
-    }
+    };
 
-    function hideEditor() {
+    window.hideEditor = () => {
         document.getElementById('editorCard').classList.remove('active');
         currentEditId = null;
-    }
+    };
 
-    // 🖍️ ฟังก์ชันไฮไลท์ข้อความ
-    function highlightText() {
+    window.highlightText = () => {
         const selection = window.getSelection();
         if (!selection.rangeCount || selection.isCollapsed) return;
-
         const range = selection.getRangeAt(0);
         const span = document.createElement('span');
         span.className = 'highlight';
         range.surroundContents(span);
-    }
+    };
 
-    // 🖼️ ฟังก์ชันแนบรูปภาพ (รองรับ PNG, JPG, GIF, WebP ฯลฯ)
-    function insertImage(event) {
+    window.addLink = () => {
+        let url = prompt("กรุณากรอก URL ลิงก์:");
+        if (!url) return;
+        if (!url.startsWith('http')) url = 'https://' + url;
+        const selection = window.getSelection();
+        if (selection.rangeCount && !selection.isCollapsed) {
+            const range = selection.getRangeAt(0);
+            const a = document.createElement('a');
+            a.href = url; a.target = '_blank'; a.innerText = selection.toString();
+            range.deleteContents(); range.insertNode(a);
+        } else {
+            const content = document.getElementById('noteContent');
+            const a = document.createElement('a');
+            a.href = url; a.target = '_blank'; a.innerText = url;
+            content.appendChild(a);
+        }
+    };
+
+    window.insertImage = (event) => {
         const file = event.target.files[0];
         if (!file) return;
-
         const reader = new FileReader();
         reader.onload = function(e) {
             const img = document.createElement('img');
             img.src = e.target.result;
-            img.style.maxWidth = '100%';
-            
-            // แทรกรูปตรงจุดที่เคอร์เซอร์วางอยู่
-            const content = document.getElementById('noteContent');
-            content.appendChild(img);
-            content.appendChild(document.createElement('br'));
+            document.getElementById('noteContent').appendChild(img);
         };
         reader.readAsDataURL(file);
-    }
+    };
 
-    // 💾 บันทึกโน้ต
-    function saveNote() {
-        const title = document.getElementById('noteTitle').value.trim() || 'ไม่มีหัวข้อ';
-        const content = document.getElementById('noteContent').innerHTML;
-        const now = new Date().toLocaleString('th-TH');
-
-        if (currentEditId !== null) {
-            // แก้ไขโน้ตเดิม
-            const index = notes.findIndex(n => n.id === currentEditId);
-            notes[index].title = title;
-            notes[index].content = content;
-            notes[index].updatedAt = now;
-        } else {
-            // เพิ่มโน้ตใหม่
-            const newNote = {
-                id: Date.now(),
-                title: title,
-                content: content,
-                isPinned: false,
-                createdAt: now,
-                updatedAt: now
-            };
-            notes.unshift(newNote);
-        }
-
-        saveToStorage();
-        hideEditor();
-        renderNotes();
-    }
-
-    // 📌 สลับสถานะปักหมุด
-    function togglePin(id) {
-        const note = notes.find(n => n.id === id);
-        if (note) {
-            note.isPinned = !note.isPinned;
-            saveToStorage();
-            renderNotes();
-        }
-    }
-
-    // 🗑️ ลบโน้ต
-    function deleteNote(id) {
-        if (confirm('คุณต้องการลบโน้ตนี้ใช่ไหม?')) {
-            notes = notes.filter(n => n.id !== id);
-            saveToStorage();
-            renderNotes();
-        }
-    }
-
-    // 🔍 แสดงผลโน้ต + ค้นหา + จัดลำดับปักหมุด
-    function renderNotes() {
+    window.renderNotes = () => {
         const search = document.getElementById('searchInput').value.toLowerCase();
         const grid = document.getElementById('notesGrid');
         grid.innerHTML = '';
 
-        // แยกโน้ตปักหมุดขึ้นก่อน
         const filtered = notes.filter(n => 
-            n.title.toLowerCase().includes(search) || 
-            n.content.toLowerCase().includes(search)
+            n.title.toLowerCase().includes(search) || n.content.toLowerCase().includes(search)
         );
 
         filtered.sort((a, b) => b.isPinned - a.isPinned);
@@ -217,27 +276,21 @@
                 <div>
                     <div class="note-header">
                         <div class="note-title">${note.title}</div>
-                        <span class="pin-icon" onclick="togglePin(${note.id})" title="ปักหมุด">📌</span>
+                        <span class="pin-icon" onclick="togglePin('${note.id}', ${note.isPinned})" title="ปักหมุด">📌</span>
                     </div>
                     <div class="note-body">${note.content}</div>
                 </div>
                 <div class="note-footer">
+                    <div>🕒 ${note.createdAt}<br>✏️ ${note.updatedAt}</div>
                     <div>
-                        🕒 สร้าง: ${note.createdAt}<br>
-                        ✏️ แก้ไข: ${note.updatedAt}
-                    </div>
-                    <div class="note-actions">
-                        <button class="action-btn" onclick="showEditor(${note.id})" title="แก้ไข">✏️</button>
-                        <button class="action-btn" onclick="deleteNote(${note.id})" title="ลบ">🗑️</button>
+                        <button class="action-btn" onclick="showEditor('${note.id}')">✏️</button>
+                        <button class="action-btn" onclick="deleteNote('${note.id}')">🗑️</button>
                     </div>
                 </div>
             `;
             grid.appendChild(card);
         });
-    }
-
-    // โหลดโน้ตเมื่อเปิดหน้าเว็บ
-    renderNotes();
+    };
 </script>
 
 </body>

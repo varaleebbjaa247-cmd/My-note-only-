@@ -11,9 +11,19 @@
         h1 { text-align: center; color: #1a73e8; margin-bottom: 20px; }
         
         /* Auth UI */
-        .auth-card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); max-width: 400px; margin: 50px auto; text-align: center; }
+        .auth-card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); max-width: 400px; margin: 30px auto; text-align: center; }
         .auth-card input { width: 100%; padding: 10px; margin: 8px 0; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; }
-        .auth-card button { width: 100%; margin-top: 10px; }
+        .auth-card button { width: 100%; margin-top: 8px; }
+        
+        .tab-buttons { display: flex; gap: 5px; margin-bottom: 15px; border-bottom: 2px solid #f0f0f0; padding-bottom: 10px; }
+        .tab-btn { flex: 1; padding: 8px; border: none; background: #e9ecef; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: bold; }
+        .tab-btn.active { background: #1a73e8; color: white; }
+
+        .btn-google { background-color: #4285f4; color: white; display: flex; align-items: center; justify-content: center; gap: 8px; }
+        .btn-phone { background-color: #28a745; color: white; }
+        .divider { margin: 15px 0; color: #888; font-size: 12px; position: relative; }
+        .divider::before, .divider::after { content: ""; position: absolute; top: 50%; width: 35%; height: 1px; background: #ddd; }
+        .divider::before { left: 0; } .divider::after { right: 0; }
 
         /* Main UI */
         #mainApp { display: none; }
@@ -56,12 +66,38 @@
 <div class="container">
     <div id="authArea" class="auth-card">
         <h2 id="authTitle">🔑 เข้าสู่ระบบ</h2>
-        <input type="email" id="authEmail" placeholder="อีเมล">
-        <input type="password" id="authPassword" placeholder="รหัสผ่าน">
-        <button class="btn btn-primary" onclick="handleAuth()">เข้าสู่ระบบ</button>
-        <p style="font-size: 13px; margin-top: 15px;">
-            <a href="#" onclick="toggleAuthMode()" id="toggleAuthText">ยังไม่มีบัญชี? สมัครสมาชิกที่นี่</a>
-        </p>
+
+        <div class="tab-buttons">
+            <button class="tab-btn active" id="tabEmail" onclick="switchAuthTab('email')">📧 อีเมล</button>
+            <button class="tab-btn" id="tabPhone" onclick="switchAuthTab('phone')">📱 เบอร์โทร</button>
+        </div>
+
+        <!-- Form Email -->
+        <div id="emailForm">
+            <input type="email" id="authEmail" placeholder="อีเมล">
+            <input type="password" id="authPassword" placeholder="รหัสผ่าน">
+            <button class="btn btn-primary" onclick="handleAuth()">เข้าสู่ระบบ</button>
+            <p style="font-size: 13px; margin-top: 10px;">
+                <a href="#" onclick="toggleAuthMode()" id="toggleAuthText">ยังไม่มีบัญชี? สมัครสมาชิกที่นี่</a>
+            </p>
+        </div>
+
+        <!-- Form Phone -->
+        <div id="phoneForm" style="display: none;">
+            <input type="tel" id="phoneNumber" placeholder="เบอร์โทรศัพท์ (เช่น +66812345678)">
+            <button class="btn btn-phone" id="sendOtpBtn" onclick="sendOTP()">ส่งรหัส OTP</button>
+            
+            <div id="otpSection" style="display: none; margin-top: 10px;">
+                <input type="text" id="otpCode" placeholder="กรอกรหัส OTP 6 หลัก">
+                <button class="btn btn-primary" onclick="verifyOTP()">ยืนยันรหัส OTP</button>
+            </div>
+            <div id="recaptcha-container" style="margin-top: 10px;"></div>
+        </div>
+
+        <div class="divider">หรือ</div>
+
+        <!-- Google Sign-In -->
+        <button class="btn btn-google" onclick="handleGoogleAuth()">🌐 เข้าสู่ระบบด้วย Google</button>
     </div>
 
     <div id="mainApp">
@@ -102,8 +138,11 @@
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } 
-        from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+    import { 
+        getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, 
+        signInWithPopup, GoogleAuthProvider, RecaptchaVerifier, signInWithPhoneNumber, 
+        onAuthStateChanged, signOut 
+    } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
     import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, where } 
         from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
@@ -119,11 +158,29 @@
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
+    const googleProvider = new GoogleAuthProvider();
 
     let currentUser = null;
     let notes = [];
     let isSignUpMode = false;
     let currentEditId = null;
+    let confirmationResult = null;
+
+    // สลับแท็บ Email / Phone
+    window.switchAuthTab = (tab) => {
+        if (tab === 'email') {
+            document.getElementById('emailForm').style.display = 'block';
+            document.getElementById('phoneForm').style.display = 'none';
+            document.getElementById('tabEmail').classList.add('active');
+            document.getElementById('tabPhone').classList.remove('active');
+        } else {
+            document.getElementById('emailForm').style.display = 'none';
+            document.getElementById('phoneForm').style.display = 'block';
+            document.getElementById('tabEmail').classList.remove('active');
+            document.getElementById('tabPhone').classList.add('active');
+            initRecaptcha();
+        }
+    };
 
     window.toggleAuthMode = () => {
         isSignUpMode = !isSignUpMode;
@@ -131,6 +188,7 @@
         document.getElementById('toggleAuthText').innerText = isSignUpMode ? 'มีบัญชีอยู่แล้ว? เข้าสู่ระบบ' : 'ยังไม่มีบัญชี? สมัครสมาชิกที่นี่';
     };
 
+    // เข้าสู่ระบบด้วย Email
     window.handleAuth = async () => {
         const email = document.getElementById('authEmail').value;
         const pass = document.getElementById('authPassword').value;
@@ -146,6 +204,47 @@
         }
     };
 
+    // เข้าสู่ระบบด้วย Google
+    window.handleGoogleAuth = async () => {
+        try {
+            await signInWithPopup(auth, googleProvider);
+        } catch (e) {
+            alert('เกิดข้อผิดพลาด Google Sign-In: ' + e.message);
+        }
+    };
+
+    // ระบบ Phone OTP
+    function initRecaptcha() {
+        if (!window.recaptchaVerifier) {
+            window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+                'size': 'invisible'
+            });
+        }
+    }
+
+    window.sendOTP = async () => {
+        const phone = document.getElementById('phoneNumber').value;
+        if (!phone) return alert('กรุณากรอกเบอร์โทรศัพท์ด้วยรหัสประเทศ เช่น +66812345678');
+        try {
+            const appVerifier = window.recaptchaVerifier;
+            confirmationResult = await signInWithPhoneNumber(auth, phone, appVerifier);
+            alert('ส่งรหัส OTP เรียบร้อยแล้ว!');
+            document.getElementById('otpSection').style.display = 'block';
+        } catch (e) {
+            alert('เกิดข้อผิดพลาดส่ง OTP: ' + e.message);
+        }
+    };
+
+    window.verifyOTP = async () => {
+        const code = document.getElementById('otpCode').value;
+        try {
+            await confirmationResult.confirm(code);
+            alert('ยืนยันตัวตนสำเร็จ!');
+        } catch (e) {
+            alert('รหัส OTP ไม่ถูกต้อง: ' + e.message);
+        }
+    };
+
     window.logout = () => signOut(auth);
 
     onAuthStateChanged(auth, (user) => {
@@ -153,7 +252,7 @@
         if (user) {
             document.getElementById('authArea').style.display = 'none';
             document.getElementById('mainApp').style.display = 'block';
-            document.getElementById('userEmailDisplay').innerText = user.email;
+            document.getElementById('userEmailDisplay').innerText = user.email || user.phoneNumber || user.displayName;
             loadNotesFromCloud();
         } else {
             document.getElementById('authArea').style.display = 'block';

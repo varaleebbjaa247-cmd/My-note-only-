@@ -166,7 +166,6 @@
     let currentEditId = null;
     let confirmationResult = null;
 
-    // สลับแท็บ Email / Phone
     window.switchAuthTab = (tab) => {
         if (tab === 'email') {
             document.getElementById('emailForm').style.display = 'block';
@@ -188,7 +187,6 @@
         document.getElementById('toggleAuthText').innerText = isSignUpMode ? 'มีบัญชีอยู่แล้ว? เข้าสู่ระบบ' : 'ยังไม่มีบัญชี? สมัครสมาชิกที่นี่';
     };
 
-    // เข้าสู่ระบบด้วย Email
     window.handleAuth = async () => {
         const email = document.getElementById('authEmail').value;
         const pass = document.getElementById('authPassword').value;
@@ -204,7 +202,6 @@
         }
     };
 
-    // เข้าสู่ระบบด้วย Google
     window.handleGoogleAuth = async () => {
         try {
             await signInWithPopup(auth, googleProvider);
@@ -213,7 +210,6 @@
         }
     };
 
-    // ระบบ Phone OTP
     function initRecaptcha() {
         if (!window.recaptchaVerifier) {
             window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
@@ -272,8 +268,10 @@
     }
 
     window.saveNote = async () => {
-        const title = document.getElementById('noteTitle').value.trim() || 'ไม่มีหัวข้อ';
-        const content = document.getElementById('noteContent').innerHTML;
+        const titleInput = document.getElementById('noteTitle');
+        const contentInput = document.getElementById('noteContent');
+        const title = titleInput.value.trim() || 'ไม่มีหัวข้อ';
+        const content = contentInput.innerHTML;
         const now = new Date().toLocaleString('th-TH');
 
         if (currentEditId) {
@@ -287,6 +285,8 @@
                 createdAt: now, updatedAt: now
             });
         }
+
+        // ซ่อนกรอบและล้างข้อมูล
         hideEditor();
     };
 
@@ -315,6 +315,8 @@
 
     window.hideEditor = () => {
         document.getElementById('editorCard').classList.remove('active');
+        document.getElementById('noteTitle').value = '';
+        document.getElementById('noteContent').innerHTML = '';
         currentEditId = null;
     };
 
